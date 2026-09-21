@@ -1,0 +1,33 @@
+# ===== 依赖与构建产物 =====
+node_modules/
+.pnpm-store/
+pnpm-store/
+bun.lockb
+bun.lock
+pkg-lock.yml
+target/
+dist/
+*.lock
+*.class
+*.jar
+*.log
+*.iml
+
+# ===== IDE / 系统 =====
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ===== AI 规划本地文件（不随仓库发布）=====
+.trae/
+
+# ===== 敏感配置（含数据库账号/密钥，禁止入库）=====
+backend/src/main/resources/application-dev.yml
+backend/src/main/resources/application-prod.yml
+*.env
+.env.*
+
+# ===== 根目录误生成的包管理残留 =====
+package-lock.json

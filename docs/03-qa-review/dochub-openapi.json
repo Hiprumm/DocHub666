@@ -1,0 +1,936 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DocHub 后台管理接口",
+    "version": "1.0.0",
+    "description": "DocHub 企业文档管理平台 - RBAC 权限体系接口（用户/部门/角色/权限/授权绑定）。\n\n导入 Apifox 后直接使用；上下文路径为 /backend，见 servers[0].url。\n所有响应统一为 Result 包装体：{ code, message, data }。"
+  },
+  "servers": [
+    { "url": "http://localhost:10086/backend", "description": "本地开发环境" }
+  ],
+  "tags": [
+    { "name": "用户管理", "description": "SysUser 增删改查" },
+    { "name": "部门管理", "description": "SysDept 树形增删改查" },
+    { "name": "角色管理", "description": "SysRole 增删改查" },
+    { "name": "权限管理", "description": "SysPermission 树形增删改查" },
+    { "name": "授权绑定", "description": "用户-角色 / 用户-权限 / 角色-权限关联" }
+  ],
+  "paths": {
+    "/sys/user": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "创建用户",
+        "operationId": "createUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysUserCreateDto" },
+              "example": {
+                "username": "zhangsan",
+                "password": "Passw0rd!",
+                "realName": "张三",
+                "email": "zhangsan@example.com",
+                "phone": "13800138000",
+                "deptId": 1,
+                "status": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysUserVo" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["用户管理"],
+        "summary": "更新用户（不含密码）",
+        "operationId": "updateUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysUserUpdateDto" },
+              "example": {
+                "id": 1,
+                "realName": "张三丰",
+                "email": "zhangsan@example.com",
+                "phone": "13900139000",
+                "deptId": 2,
+                "status": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysUserVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/user/{id}": {
+      "get": {
+        "tags": ["用户管理"],
+        "summary": "查询单个用户",
+        "operationId": "getUserById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysUserVo" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["用户管理"],
+        "summary": "删除用户（逻辑删除）",
+        "operationId": "deleteUser",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/user/list": {
+      "get": {
+        "tags": ["用户管理"],
+        "summary": "分页查询用户",
+        "operationId": "pageUser",
+        "parameters": [
+          { "name": "pageNum", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 }, "example": 1, "description": "页码，从 1 开始" },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "default": 10 }, "example": 10, "description": "每页条数" },
+          { "name": "deptId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" }, "description": "按部门过滤" },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" }, "description": "账号/姓名模糊匹配" }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultPageSysUserVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/dept": {
+      "post": {
+        "tags": ["部门管理"],
+        "summary": "创建部门",
+        "operationId": "createDept",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysDeptDto" },
+              "example": {
+                "parentId": 0,
+                "deptName": "技术部",
+                "orderNum": 0,
+                "status": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysDeptVo" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["部门管理"],
+        "summary": "更新部门",
+        "operationId": "updateDept",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysDeptDto" },
+              "example": {
+                "id": 1,
+                "parentId": 0,
+                "deptName": "技术中心",
+                "orderNum": 0,
+                "status": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysDeptVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/dept/{id}": {
+      "get": {
+        "tags": ["部门管理"],
+        "summary": "查询单个部门",
+        "operationId": "getDeptById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysDeptVo" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["部门管理"],
+        "summary": "删除部门（存在子部门时禁止删除）",
+        "operationId": "deleteDept",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/dept/tree": {
+      "get": {
+        "tags": ["部门管理"],
+        "summary": "查询部门树",
+        "operationId": "deptTree",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultListSysDeptVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/dept/children": {
+      "get": {
+        "tags": ["部门管理"],
+        "summary": "查询某部门的子部门",
+        "operationId": "deptChildren",
+        "parameters": [
+          { "name": "parentId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 0 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultListSysDeptVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/role": {
+      "post": {
+        "tags": ["角色管理"],
+        "summary": "创建角色",
+        "operationId": "createRole",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysRoleDto" },
+              "example": {
+                "roleName": "文档管理员",
+                "roleKey": "editor",
+                "sort": 1,
+                "status": 0,
+                "remark": "负责文档治理"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysRoleVo" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["角色管理"],
+        "summary": "更新角色",
+        "operationId": "updateRole",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysRoleDto" },
+              "example": {
+                "id": 1,
+                "roleName": "文档编辑者",
+                "roleKey": "editor",
+                "sort": 1,
+                "status": 0,
+                "remark": "可编辑文档"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysRoleVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/role/{id}": {
+      "get": {
+        "tags": ["角色管理"],
+        "summary": "查询单个角色",
+        "operationId": "getRoleById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysRoleVo" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["角色管理"],
+        "summary": "删除角色（逻辑删除）",
+        "operationId": "deleteRole",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/role/list": {
+      "get": {
+        "tags": ["角色管理"],
+        "summary": "分页查询角色",
+        "operationId": "pageRole",
+        "parameters": [
+          { "name": "pageNum", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 }, "example": 1 },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "default": 10 }, "example": 10 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultPageSysRoleVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/permission": {
+      "post": {
+        "tags": ["权限管理"],
+        "summary": "创建权限",
+        "operationId": "createPermission",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysPermissionDto" },
+              "example": {
+                "parentId": 0,
+                "permName": "文档管理",
+                "permKey": "doc:manage",
+                "permType": 1,
+                "sort": 1,
+                "status": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysPermissionVo" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["权限管理"],
+        "summary": "更新权限",
+        "operationId": "updatePermission",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SysPermissionDto" },
+              "example": {
+                "id": 1,
+                "parentId": 0,
+                "permName": "文档管理",
+                "permKey": "doc:manage",
+                "permType": 1,
+                "sort": 1,
+                "status": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysPermissionVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/permission/{id}": {
+      "get": {
+        "tags": ["权限管理"],
+        "summary": "查询单个权限",
+        "operationId": "getPermissionById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultSysPermissionVo" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["权限管理"],
+        "summary": "删除权限（存在子权限时禁止删除）",
+        "operationId": "deletePermission",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/permission/tree": {
+      "get": {
+        "tags": ["权限管理"],
+        "summary": "查询权限树",
+        "operationId": "permissionTree",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultListSysPermissionVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/permission/children": {
+      "get": {
+        "tags": ["权限管理"],
+        "summary": "查询某权限的子权限",
+        "operationId": "permissionChildren",
+        "parameters": [
+          { "name": "parentId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 0 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultListSysPermissionVo" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/auth/user/{userId}/roles": {
+      "post": {
+        "tags": ["授权绑定"],
+        "summary": "给用户分配角色（全量覆盖）",
+        "operationId": "assignRolesToUser",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ListLong" },
+              "example": [1, 2, 3]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/auth/user/{userId}/permissions": {
+      "post": {
+        "tags": ["授权绑定"],
+        "summary": "给用户直挂权限（全量覆盖）",
+        "operationId": "assignPermissionsToUser",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ListLong" },
+              "example": [1, 2]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/auth/role/{roleId}/permissions": {
+      "post": {
+        "tags": ["授权绑定"],
+        "summary": "给角色分配权限（全量覆盖）",
+        "operationId": "assignPermissionsToRole",
+        "parameters": [
+          { "name": "roleId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ListLong" },
+              "example": [1, 2, 3]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/auth/user/{userId}": {
+      "get": {
+        "tags": ["授权绑定"],
+        "summary": "查询用户绑定的角色与直挂权限",
+        "operationId": "getUserAuth",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultUserAuth" },
+                "example": {
+                  "code": 200,
+                  "message": "ok",
+                  "data": {
+                    "roleIds": [1, 2],
+                    "permissionIds": [1]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sys/auth/role/{roleId}/permissionIds": {
+      "get": {
+        "tags": ["授权绑定"],
+        "summary": "查询角色绑定的权限ID列表",
+        "operationId": "getRolePermissionIds",
+        "parameters": [
+          { "name": "roleId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ResultListLong" },
+                "example": {
+                  "code": 200,
+                  "message": "ok",
+                  "data": [1, 2, 3]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Result": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "type": "object", "nullable": true }
+        }
+      },
+      "SysUserCreateDto": {
+        "type": "object",
+        "required": ["username", "password", "deptId"],
+        "properties": {
+          "username": { "type": "string", "minLength": 3, "maxLength": 50, "example": "zhangsan", "description": "登录账号，唯一，3~50" },
+          "password": { "type": "string", "minLength": 8, "maxLength": 64, "example": "Passw0rd!", "description": "密码，8~64" },
+          "realName": { "type": "string", "maxLength": 50, "example": "张三" },
+          "email": { "type": "string", "maxLength": 100, "example": "zhangsan@example.com" },
+          "phone": { "type": "string", "example": "13800138000", "description": "1开头11位" },
+          "deptId": { "type": "integer", "format": "int64", "example": 1, "description": "所属部门ID" },
+          "status": { "type": "integer", "default": 0, "example": 0, "description": "0正常 1停用" }
+        }
+      },
+      "SysUserUpdateDto": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 1 },
+          "realName": { "type": "string", "maxLength": 50, "example": "张三丰" },
+          "email": { "type": "string", "maxLength": 100, "example": "zhangsan@example.com" },
+          "phone": { "type": "string", "example": "13900139000" },
+          "deptId": { "type": "integer", "format": "int64", "example": 2 },
+          "status": { "type": "integer", "example": 0 }
+        }
+      },
+      "SysUserVo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "123456789012345" },
+          "username": { "type": "string", "example": "zhangsan" },
+          "realName": { "type": "string", "example": "张三" },
+          "email": { "type": "string", "example": "zhangsan@example.com" },
+          "phone": { "type": "string", "example": "13800138000" },
+          "deptId": { "type": "string", "example": "1" },
+          "status": { "type": "integer", "example": 0 },
+          "createTime": { "type": "string", "format": "date-time", "example": "2026-09-20T10:00:00" },
+          "updateTime": { "type": "string", "format": "date-time", "example": "2026-09-20T10:00:00" }
+        }
+      },
+      "SysDeptDto": {
+        "type": "object",
+        "required": ["deptName"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "更新时必填" },
+          "parentId": { "type": "integer", "format": "int64", "default": 0, "example": 0 },
+          "ancestors": { "type": "string", "maxLength": 500, "description": "祖级链，后端自动计算" },
+          "deptName": { "type": "string", "maxLength": 50, "example": "技术部" },
+          "orderNum": { "type": "integer", "default": 0, "example": 0 },
+          "leaderUserId": { "type": "integer", "format": "int64" },
+          "status": { "type": "integer", "default": 0, "example": 0 }
+        }
+      },
+      "SysDeptVo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "123456789012345" },
+          "parentId": { "type": "string", "example": "0" },
+          "ancestors": { "type": "string", "example": "0,1" },
+          "deptName": { "type": "string", "example": "技术部" },
+          "orderNum": { "type": "integer", "example": 0 },
+          "leaderUserId": { "type": "string", "example": "1", "nullable": true },
+          "status": { "type": "integer", "example": 0 },
+          "createTime": { "type": "string", "format": "date-time", "example": "2026-09-20T10:00:00" }
+        }
+      },
+      "SysRoleDto": {
+        "type": "object",
+        "required": ["roleName", "roleKey"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "更新时必填" },
+          "roleName": { "type": "string", "maxLength": 50, "example": "文档管理员" },
+          "roleKey": { "type": "string", "maxLength": 50, "example": "editor", "description": "唯一标识" },
+          "sort": { "type": "integer", "default": 0, "example": 1 },
+          "status": { "type": "integer", "default": 0, "example": 0 },
+          "remark": { "type": "string", "maxLength": 255, "example": "负责文档治理" }
+        }
+      },
+      "SysRoleVo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "123456789012345" },
+          "roleName": { "type": "string", "example": "文档管理员" },
+          "roleKey": { "type": "string", "example": "editor" },
+          "sort": { "type": "integer", "example": 1 },
+          "status": { "type": "integer", "example": 0 },
+          "remark": { "type": "string", "example": "负责文档治理" },
+          "createTime": { "type": "string", "format": "date-time", "example": "2026-09-20T10:00:00" }
+        }
+      },
+      "SysPermissionDto": {
+        "type": "object",
+        "required": ["permName", "permKey", "permType"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "更新时必填" },
+          "parentId": { "type": "integer", "format": "int64", "default": 0, "example": 0 },
+          "ancestors": { "type": "string", "maxLength": 500, "description": "祖级链，后端自动计算" },
+          "permName": { "type": "string", "maxLength": 50, "example": "文档管理" },
+          "permKey": { "type": "string", "maxLength": 100, "example": "doc:manage" },
+          "permType": { "type": "integer", "default": 1, "example": 1, "description": "1目录 2菜单 3按钮/接口" },
+          "path": { "type": "string", "maxLength": 200, "example": "/doc" },
+          "method": { "type": "string", "maxLength": 10, "example": "GET" },
+          "sort": { "type": "integer", "default": 0, "example": 1 },
+          "status": { "type": "integer", "default": 0, "example": 0 }
+        }
+      },
+      "SysPermissionVo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "123456789012345" },
+          "parentId": { "type": "string", "example": "0" },
+          "ancestors": { "type": "string", "example": "0,1" },
+          "permName": { "type": "string", "example": "文档管理" },
+          "permKey": { "type": "string", "example": "doc:manage" },
+          "permType": { "type": "integer", "example": 1 },
+          "path": { "type": "string", "example": "/doc", "nullable": true },
+          "method": { "type": "string", "example": "GET", "nullable": true },
+          "sort": { "type": "integer", "example": 1 },
+          "status": { "type": "integer", "example": 0 },
+          "createTime": { "type": "string", "format": "date-time", "example": "2026-09-20T10:00:00" }
+        }
+      },
+      "ListLong": {
+        "type": "array",
+        "items": { "type": "integer", "format": "int64" },
+        "example": [1, 2, 3]
+      },
+      "ResultUserAuth": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "roleIds": { "type": "array", "items": { "type": "integer", "format": "int64" }, "example": [1, 2] },
+              "permissionIds": { "type": "array", "items": { "type": "integer", "format": "int64" }, "example": [1] }
+            }
+          }
+        }
+      },
+      "ResultListLong": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "type": "array", "items": { "type": "integer", "format": "int64" }, "example": [1, 2, 3] }
+        }
+      },
+      "PageResultBase": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "format": "int64", "example": 100 },
+          "pageNum": { "type": "integer", "example": 1 },
+          "pageSize": { "type": "integer", "example": 10 }
+        }
+      },
+      "ResultSysUserVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "$ref": "#/components/schemas/SysUserVo" }
+        }
+      },
+      "ResultSysDeptVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "$ref": "#/components/schemas/SysDeptVo" }
+        }
+      },
+      "ResultSysRoleVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "$ref": "#/components/schemas/SysRoleVo" }
+        }
+      },
+      "ResultSysPermissionVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "$ref": "#/components/schemas/SysPermissionVo" }
+        }
+      },
+      "ResultPageSysUserVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": {
+            "allOf": [
+              { "$ref": "#/components/schemas/PageResultBase" },
+              {
+                "type": "object",
+                "properties": {
+                  "records": { "type": "array", "items": { "$ref": "#/components/schemas/SysUserVo" } }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "ResultPageSysRoleVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": {
+            "allOf": [
+              { "$ref": "#/components/schemas/PageResultBase" },
+              {
+                "type": "object",
+                "properties": {
+                  "records": { "type": "array", "items": { "$ref": "#/components/schemas/SysRoleVo" } }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "ResultListSysDeptVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/SysDeptVo" } }
+        }
+      },
+      "ResultListSysPermissionVo": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "ok" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/SysPermissionVo" } }
+        }
+      }
+    }
+  }
+}

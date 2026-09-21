@@ -1,0 +1,67 @@
+/**
+ * DocHub 全局基础样式
+ * 仅做 reset、HTML 字体基线、滚动行为、动效降级，不承载任何组件具体视觉。
+ */
+
+/* 深色主题全局基线 */
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+a:hover {
+  text-decoration: underline;
+  color: var(--color-accent-hover);
+}
+
+/* 关键可访问性：统一 focus-visible 外观（设计文档 §5.2）
+ * 输入框类元素用自身聚焦态，不在此叠加外发光 */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+:is(input, textarea):focus-visible {
+  outline: none;
+}
+input:focus-visible {
+  outline: none;
+}
+
+/* 数字对齐：配额/邮箱等数据使用等宽数字 */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* prefers-reduced-motion 降级（设计文档 §2.6） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
