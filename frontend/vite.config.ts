@@ -13,5 +13,12 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    proxy: {
+      // 后端 context-path 为 /backend，端口 10086（见 backend application-dev.yml）
+      '/backend': {
+        target: 'http://localhost:10086',
+        changeOrigin: true,
+      },
+    },
   },
 })

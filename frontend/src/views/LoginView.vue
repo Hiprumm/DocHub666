@@ -13,83 +13,83 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseInput from '@/components/BaseInput.vue'
 import BaseButton from '@/components/BaseButton.vue'
-import { getRememberedEmail, setRememberedEmail } from '@/utils/storage'
-import { isValidEmail, isPasswordValid } from '@/utils/validation'
+import { getRememberedEmail, setRememberedEmail, setAuth } from '@/utils/storage'
+import { MIN_PASSWORD_LENGTH } from '@/utils/validation'
+import { loginApi } from '@/api/auth'
 
 const router = useRouter()
 
 interface LoginForm {
-  email: string
+  username: string
   password: string
   remember: boolean
 }
 
 const form = reactive<LoginForm>({
-  email: '',
+  username: '',
   password: '',
   remember: false,
 })
 const showPassword = ref(false)
 const loading = ref(false)
-// 模拟提交失败开关，便于查看错误态（false 即成功跳转）
-const simulateFailure = ref(false)
+// 后端返回的错误提示（账号/密码错误、停用等）
+const serverError = ref('')
 
-const errors = reactive<{ email: string; password: string }>({
-  email: '',
+const errors = reactive<{ username: string; password: string }>({
+  username: '',
   password: '',
 })
 
-// 勾选“记住我”则回填已存邮箱
+// 勾选“记住我”则回填已存邮箱（用户名）
 onMounted(() => {
   const saved = getRememberedEmail()
   if (saved) {
-    form.email = saved
+    form.username = saved
     form.remember = true
   }
 })
 
-function validateField(field: 'email' | 'password'): boolean {
-  if (field === 'email') {
-    errors.email = form.email.trim()
-      ? isValidEmail(form.email)
-        ? ''
-        : '请输入有效的邮箱地址'
-      : '请输入邮箱'
-    return !errors.email
+function validateField(field: 'username' | 'password'): boolean {
+  if (field === 'username') {
+    errors.username = form.username.trim() ? '' : '请输入用户名'
+    return !errors.username
   }
   errors.password = form.password
-    ? isPasswordValid(form.password)
+    ? form.password.length >= MIN_PASSWORD_LENGTH
       ? ''
-      : '密码长度不能少于 8 位'
+      : `密码长度不能少于 ${MIN_PASSWORD_LENGTH} 位`
     : '请输入密码'
   return !errors.password
 }
 
 const canSubmit = computed(
-  () => form.email.trim() !== '' && form.password !== '',
+  () => form.username.trim() !== '' && form.password !== '',
 )
 
 /**
- * 提交模拟：校验 → 记住邮箱 → 1.5s loading → 跳转仪表盘
+ * 提交：校验 → 调用后端 /auth/login → 成功存 token 跳仪表盘；失败展示后端错误。
  */
-function handleSubmit() {
+async function handleSubmit() {
   if (loading.value) return
-  const emailOk = validateField('email')
+  serverError.value = ''
+  const nameOk = validateField('username')
   const pwdOk = validateField('password')
-  if (!emailOk || !pwdOk) return
+  if (!nameOk || !pwdOk) return
 
-  setRememberedEmail(form.email.trim(), form.remember)
+  const username = form.username.trim()
+  setRememberedEmail(username, form.remember)
 
   loading.value = true
-  setTimeout(() => {
-    loading.value = false
-    if (simulateFailure.value) {
-      errors.email = '演示：登录失败（模拟错误态）'
-      return
-    }
-    // 路由占位，/dashboard 已在路由中预置
+  try {
+    const result = await loginApi({ username, password: form.password })
+    setAuth(result)
     void router.push('/dashboard')
-  }, 1500)
+  } catch (err) {
+    serverError.value =
+      err instanceof Error ? err.message : '登录失败，请稍后重试'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -151,14 +151,14 @@ function handleSubmit() {
       <section class="login-form-panel" aria-label="登录表单">
         <form class="login-form" novalidate @submit.prevent="handleSubmit">
           <BaseInput
-            id="login-email"
-            v-model="form.email"
-            label="WORK EMAIL"
-            type="email"
-            placeholder="you@company.com"
-            autocomplete="email"
-            :error="errors.email"
-            @blur="validateField('email')"
+            id="login-username"
+            v-model="form.username"
+            label="USERNAME"
+            type="text"
+            placeholder="请输入用户名"
+            autocomplete="username"
+            :error="errors.username"
+            @blur="validateField('username')"
           />
           <BaseInput
             id="login-password"
@@ -199,6 +199,8 @@ function handleSubmit() {
             </label>
             <a href="#" class="login-link" @click.prevent>忘记密码？</a>
           </div>
+
+          <p v-if="serverError" class="login-error" role="alert">{{ serverError }}</p>
 
           <BaseButton
             type="submit"
@@ -457,6 +459,15 @@ function handleSubmit() {
 .login-link:hover {
   color: var(--color-accent-mark); /* #D1FFFF 唯一强调 hover */
   text-decoration: none;
+}
+
+/* ---------- 服务器返回的错误提示 ---------- */
+.login-error {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  color: var(--color-danger, #e5738f);
+  line-height: 1.5;
 }
 
 /* ---------- 主按钮全宽 ---------- */

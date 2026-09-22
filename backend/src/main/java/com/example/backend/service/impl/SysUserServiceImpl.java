@@ -4,8 +4,12 @@ import com.example.backend.common.BusinessException;
 import com.example.backend.common.PageResult;
 import com.example.backend.dto.SysUserCreateDto;
 import com.example.backend.dto.SysUserUpdateDto;
+import com.example.backend.entity.AuditAction;
+import com.example.backend.entity.OperationResult;
 import com.example.backend.entity.SysUser;
 import com.example.backend.repository.SysUserRepository;
+import com.example.backend.security.AuthContext;
+import com.example.backend.service.AuditLogService;
 import com.example.backend.service.SysUserService;
 import com.example.backend.vo.SysUserVo;
 import jakarta.persistence.criteria.Predicate;
@@ -15,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -32,6 +37,12 @@ public class SysUserServiceImpl implements SysUserService {
 
     private final SysUserRepository userRepository;
 
+    /** BCrypt 密码编码器（复用 SecurityConfig 单例 Bean，create/update 加密存储） */
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    /** 操作审计日志服务：改密等敏感操作异步留痕 */
+    private final AuditLogService auditLogService;
+
     @Override
     @Transactional
     public SysUserVo create(SysUserCreateDto dto) {
@@ -40,8 +51,8 @@ public class SysUserServiceImpl implements SysUserService {
         }
         SysUser user = new SysUser();
         user.setUsername(dto.getUsername().trim());
-        // TODO: 接入 BCrypt 后替换为加密哈希，此处仅作演示占位
-        user.setPassword(dto.getPassword());
+        // BCrypt 加密后存储，绝不以明文落库
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setRealName(dto.getRealName());
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
@@ -68,6 +79,13 @@ public class SysUserServiceImpl implements SysUserService {
         }
         if (dto.getStatus() != null) {
             user.setStatus(dto.getStatus());
+        }
+        // 仅当传入新密码时重新 BCrypt 加密覆盖；未传则保持原有密文不变，避免二次加密或覆盖为空
+        if (StringUtils.hasText(dto.getPassword())) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+            // 改密为敏感操作，异步记录审计（含真实操作人，不泄露密码）
+            auditLogService.record(AuthContext.getCurrentUserId(), AuthContext.getCurrentUsername(),
+                    AuditAction.EDIT, "USER", user.getId(), OperationResult.SUCCESS, "修改密码");
         }
         return toVo(userRepository.save(user));
     }

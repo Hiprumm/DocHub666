@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isLoggedIn } from '@/utils/storage'
 
 /**
  * 路由表：
@@ -28,6 +29,22 @@ const router = createRouter({
 router.afterEach((to) => {
   const title = (to.meta.title as string) ?? ''
   document.title = title ? `${title} · DocHub` : 'DocHub'
+})
+
+/**
+ * 登录守卫：
+ * - 已登录访问登录页 → 重定向仪表盘；
+ * - 未登录访问受保护页 → 重定向登录页。
+ */
+router.beforeEach((to) => {
+  const authed = isLoggedIn()
+  if (to.name === 'login' && authed) {
+    return { name: 'dashboard' }
+  }
+  if (to.name !== 'login' && !authed) {
+    return { name: 'login' }
+  }
+  return true
 })
 
 export default router

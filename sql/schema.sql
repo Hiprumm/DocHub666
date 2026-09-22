@@ -183,4 +183,29 @@ CREATE TABLE `sys_role_permission` (
   COLLATE = utf8mb4_unicode_ci
   COMMENT = '角色-权限关联表';
 
+-- ------------------------------------------------------------------
+-- 8. 操作审计日志表 audit_log（append-only 追加式留痕，不做逻辑删除/乐观锁）
+--    字段映射 GLOSSARY「AuditLog」：{主体、动作、对象、时间、结果} + 附加元数据。
+--    由 AuditLogService.record(...) 异步写入，action 对齐 AuditAction 枚举词。
+-- ------------------------------------------------------------------
+DROP TABLE IF EXISTS `audit_log`;
+CREATE TABLE `audit_log` (
+    `id`            BIGINT       NOT NULL                COMMENT '日志ID（雪花算法）',
+    `actor_id`      BIGINT       NULL                    COMMENT '操作主体用户ID（未登录/系统行为可空）',
+    `actor_name`    VARCHAR(50)  NULL                    COMMENT '操作主体账号名（冗余存，仅供留痕展示）',
+    `action`        VARCHAR(50)  NOT NULL                COMMENT '审计动作类型（AuditAction：LOGIN/ACCESS/UPDATE/DELETE/PERMISSION_CHANGE...）',
+    `target_type`   VARCHAR(50)  NULL                    COMMENT '操作对象类型（如 USER / ROLE / PERMISSION / DOCUMENT）',
+    `target_id`     BIGINT       NULL                    COMMENT '操作对象ID（逻辑外键对应的目标主键）',
+    `result`        VARCHAR(20)  NOT NULL                COMMENT '操作结果（OperationResult：SUCCESS/FORBIDDEN/BAD_REQUEST/...）',
+    `detail`        VARCHAR(500) NULL                    COMMENT '附加元数据/说明',
+    `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_audit_actor_time` (`actor_id`, `create_time`),
+    KEY `idx_audit_action_time` (`action`, `create_time`),
+    KEY `idx_audit_target` (`target_type`, `target_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci
+  COMMENT = '操作审计日志表（append-only）';
+
 SET FOREIGN_KEY_CHECKS = 1;

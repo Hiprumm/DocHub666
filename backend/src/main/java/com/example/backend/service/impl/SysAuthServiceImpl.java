@@ -12,6 +12,7 @@ import com.example.backend.repository.SysRoleRepository;
 import com.example.backend.repository.SysUserPermissionRepository;
 import com.example.backend.repository.SysUserRepository;
 import com.example.backend.repository.SysUserRoleRepository;
+import com.example.backend.security.PermissionAspect;
 import com.example.backend.service.SysAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,9 @@ public class SysAuthServiceImpl implements SysAuthService {
     private final SysUserPermissionRepository userPermissionRepository;
     private final SysRolePermissionRepository rolePermissionRepository;
 
+    /** 权限缓存失效：授权/撤权后即时清除目标用户缓存，保证权限变更立即生效 */
+    private final PermissionAspect permissionAspect;
+
     @Override
     @Transactional
     public void assignRolesToUser(Long userId, List<Long> roleIds) {
@@ -60,6 +64,8 @@ public class SysAuthServiceImpl implements SysAuthService {
             rels.add(ur);
         }
         userRoleRepository.saveAll(rels); // 批量插入，替代循环单条 save
+        // 即时失效目标用户权限缓存，授权立即生效
+        permissionAspect.invalidateUser(userId);
     }
 
     @Override
@@ -84,6 +90,8 @@ public class SysAuthServiceImpl implements SysAuthService {
             rels.add(up);
         }
         userPermissionRepository.saveAll(rels);
+        // 即时失效目标用户权限缓存，撤权立即生效
+        permissionAspect.invalidateUser(userId);
     }
 
     @Override
@@ -108,6 +116,11 @@ public class SysAuthServiceImpl implements SysAuthService {
             rels.add(rp);
         }
         rolePermissionRepository.saveAll(rels);
+        // 角色权限变更影响所有持有该角色的用户，批量失效其权限缓存，权限立即生效
+        userRoleRepository.findByRoleId(roleId).stream()
+                .map(SysUserRole::getUserId)
+                .distinct()
+                .forEach(permissionAspect::invalidateUser);
     }
 
     @Override
