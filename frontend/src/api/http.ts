@@ -21,13 +21,13 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  // 禁止浏览器/代理缓存鉴权与业务响应，防止 token/敏感体滞留缓存
+  config.headers['Cache-Control'] = 'no-store'
   return config
 })
 
 http.interceptors.response.use(
   (response) => {
-    // 禁止浏览器/代理缓存鉴权与业务响应，防止 token/敏感体滞留缓存
-    response.headers['Cache-Control'] = 'no-store'
     const body = response.data as ApiResult<unknown> | undefined
     // 后端统一包一层 Result，成功 code=200
     if (body && typeof body.code === 'number') {
@@ -52,9 +52,10 @@ http.interceptors.response.use(
   },
 )
 
-/** 泛型请求助手：兼容第三参数透传 AxiosRequestConfig */
+/** 泛型请求助手：响应拦截器已解包后端 Result，故可直接返回业务数据类型 T */
 export function request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
-  return http.request<T, T>(config)
+  // axios 签名的返回类型为 AxiosResponse；但响应拦截器已解包 body.data，故在此断言为业务 T
+  return http.request<unknown, T>(config) as unknown as Promise<T>
 }
 
 export default http
