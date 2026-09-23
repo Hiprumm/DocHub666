@@ -22,6 +22,6 @@ public interface SysUserService {
     /** 按主键查询 */
     SysUserVo getById(Long id);
 
-    /** 分页查询（pageNum 从 1 开始） */
-    PageResult<SysUserVo> page(int pageNum, int pageSize, Long deptId, String keyword);
+    /** 分页查询（pageNum 从 1 开始），支持按主部门/岗位/关键词筛选 */
+    PageResult<SysUserVo> page(int pageNum, int pageSize, Long deptId, Long postId, String keyword);
 }

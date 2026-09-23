@@ -4,6 +4,7 @@ import com.example.backend.common.PageResult;
 import com.example.backend.common.Result;
 import com.example.backend.dto.SysUserCreateDto;
 import com.example.backend.dto.SysUserUpdateDto;
+import com.example.backend.security.RequirePermission;
 import com.example.backend.service.SysUserService;
 import com.example.backend.vo.SysUserVo;
 import jakarta.validation.Valid;
@@ -29,32 +30,38 @@ public class SysUserController {
     private final SysUserService userService;
 
     @PostMapping
+    @RequirePermission("system:user:add")
     public Result<SysUserVo> create(@Valid @RequestBody SysUserCreateDto dto) {
         return Result.ok(userService.create(dto));
     }
 
     @PutMapping
+    @RequirePermission("system:user:update")
     public Result<SysUserVo> update(@Valid @RequestBody SysUserUpdateDto dto) {
         return Result.ok(userService.update(dto));
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("system:user:delete")
     public Result<Void> delete(@PathVariable Long id) {
         userService.delete(id);
         return Result.ok();
     }
 
     @GetMapping("/{id}")
+    @RequirePermission("system:user:query")
     public Result<SysUserVo> getById(@PathVariable Long id) {
         return Result.ok(userService.getById(id));
     }
 
     @GetMapping("/list")
+    @RequirePermission("system:user:query")
     public Result<PageResult<SysUserVo>> page(
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) Long postId,
             @RequestParam(required = false) String keyword) {
-        return Result.ok(userService.page(pageNum, pageSize, deptId, keyword));
+        return Result.ok(userService.page(pageNum, pageSize, deptId, postId, keyword));
     }
 }

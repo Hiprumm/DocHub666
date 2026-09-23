@@ -7,15 +7,15 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 角色视图对象。
+ * 岗位视图对象。
  */
 @Getter
 @Setter
-public class SysRoleVo implements Serializable {
+public class SysPostVo implements Serializable {
 
     private String id;
-    private String roleName;
-    private String roleKey;
+    private String postName;
+    private String postKey;
     private Integer sort;
     private Integer status;
     private String remark;

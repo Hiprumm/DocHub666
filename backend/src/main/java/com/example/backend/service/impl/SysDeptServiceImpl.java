@@ -123,6 +123,7 @@ public class SysDeptServiceImpl implements SysDeptService {
         vo.setOrderNum(dept.getOrderNum());
         vo.setLeaderUserId(dept.getLeaderUserId() == null ? null : String.valueOf(dept.getLeaderUserId()));
         vo.setStatus(dept.getStatus());
+        vo.setVersion(String.valueOf(dept.getVersion()));
         vo.setCreateTime(dept.getCreateTime());
         return vo;
     }

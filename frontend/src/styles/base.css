@@ -3,7 +3,7 @@
  * 仅做 reset、HTML 字体基线、滚动行为、动效降级，不承载任何组件具体视觉。
  */
 
-/* 深色主题全局基线 */
+/* 暖棕纸质主题全局基线 */
 html,
 body,
 #app {
@@ -12,9 +12,9 @@ body,
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
   font-size: var(--text-body);
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--color-text-primary);
   background-color: var(--color-bg-base);
   -webkit-font-smoothing: antialiased;

@@ -7,7 +7,13 @@ import com.example.backend.dto.SysUserUpdateDto;
 import com.example.backend.entity.AuditAction;
 import com.example.backend.entity.OperationResult;
 import com.example.backend.entity.SysUser;
+import com.example.backend.entity.SysUserDept;
+import com.example.backend.entity.SysUserPost;
+import com.example.backend.entity.SysUserRole;
+import com.example.backend.repository.SysUserDeptRepository;
+import com.example.backend.repository.SysUserPostRepository;
 import com.example.backend.repository.SysUserRepository;
+import com.example.backend.repository.SysUserRoleRepository;
 import com.example.backend.security.AuthContext;
 import com.example.backend.service.AuditLogService;
 import com.example.backend.service.SysUserService;
@@ -15,6 +21,7 @@ import com.example.backend.vo.SysUserVo;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -26,7 +33,10 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 /**
  * 用户业务实现。
@@ -36,8 +46,11 @@ import java.util.Objects;
 public class SysUserServiceImpl implements SysUserService {
 
     private final SysUserRepository userRepository;
+    private final SysUserDeptRepository userDeptRepository;
+    private final SysUserPostRepository userPostRepository;
+    private final SysUserRoleRepository userRoleRepository;
 
-    /** BCrypt 密码编码器（复用 SecurityConfig 单例 Bean，create/update 加密存储） */
+    /** BCrypt 密码编码器（复用 SecurityConfig 单例 Bean） */
     private final BCryptPasswordEncoder passwordEncoder;
 
     /** 操作审计日志服务：改密等敏感操作异步留痕 */
@@ -58,14 +71,23 @@ public class SysUserServiceImpl implements SysUserService {
         user.setPhone(dto.getPhone());
         user.setDeptId(dto.getDeptId());
         user.setStatus(dto.getStatus() == null ? 0 : dto.getStatus());
-        return toVo(userRepository.save(user));
+        SysUser saved = userRepository.save(user);
+
+        // 创建入参若携带初始多关联则一并建立（多对多批量写入，禁循环单查）
+        saveUserDepts(saved.getId(), dto.getDeptIds());
+        saveUserPosts(saved.getId(), dto.getPostIds());
+        saveUserRoles(saved.getId(), dto.getRoleIds());
+
+        SysUserVo vo = toVo(saved);
+        fillRelations(Map.of(saved.getId(), vo));
+        return vo;
     }
 
     @Override
     @Transactional
     public SysUserVo update(SysUserUpdateDto dto) {
         SysUser user = getUserOrThrow(dto.getId());
-        // 乐观锁第一道防线：前置版本冲突校验（陈旧表单拦截）
+        // 乐观锁第一道防线：前置版本冲突校验
         if (!Objects.equals(user.getVersion(), dto.getVersion())) {
             throw new BusinessException(409, "数据已被他人修改，请刷新后重试");
         }
@@ -80,14 +102,14 @@ public class SysUserServiceImpl implements SysUserService {
         if (dto.getStatus() != null) {
             user.setStatus(dto.getStatus());
         }
-        // 仅当传入新密码时重新 BCrypt 加密覆盖；未传则保持原有密文不变，避免二次加密或覆盖为空
         if (StringUtils.hasText(dto.getPassword())) {
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
-            // 改密为敏感操作，异步记录审计（含真实操作人，不泄露密码）
             auditLogService.record(AuthContext.getCurrentUserId(), AuthContext.getCurrentUsername(),
                     AuditAction.EDIT, "USER", user.getId(), OperationResult.SUCCESS, "修改密码");
         }
-        return toVo(userRepository.save(user));
+        SysUserVo vo = toVo(userRepository.save(user));
+        fillRelations(Map.of(vo.getId() != null ? Long.valueOf(vo.getId()) : user.getId(), vo));
+        return vo;
     }
 
     @Override
@@ -100,14 +122,29 @@ public class SysUserServiceImpl implements SysUserService {
 
     @Override
     public SysUserVo getById(Long id) {
-        return toVo(getUserOrThrow(id));
+        SysUserVo vo = toVo(getUserOrThrow(id));
+        fillRelations(Map.of(id, vo));
+        return vo;
     }
 
     @Override
-    public PageResult<SysUserVo> page(int pageNum, int pageSize, Long deptId, String keyword) {
+    public PageResult<SysUserVo> page(int pageNum, int pageSize, Long deptId, Long postId, String keyword) {
         Pageable pageable = PageRequest.of(Math.max(pageNum - 1, 0), pageSize,
                 Sort.by(Sort.Direction.DESC, "createTime"));
-        // 动态多条件查询：类型安全组合 isDeleted=0 + 可选 keyword/deptId，杜绝 if/else 拼接 SQL
+
+        // 岗位过滤：多对多存于 sys_user_post，先按岗位取用户ID集合，避免破坏主查询 Specification
+        final List<Long> postFilterUserIds;
+        if (postId != null) {
+            List<Long> ids = userPostRepository.findByPostId(postId).stream()
+                    .map(SysUserPost::getUserId).distinct().toList();
+            if (ids.isEmpty()) {
+                return PageResult.of(new PageImpl<>(List.of(), pageable, 0));
+            }
+            postFilterUserIds = ids;
+        } else {
+            postFilterUserIds = null;
+        }
+
         Specification<SysUser> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("isDeleted"), 0));
@@ -121,10 +158,19 @@ public class SysUserServiceImpl implements SysUserService {
             if (deptId != null) {
                 predicates.add(cb.equal(root.get("deptId"), deptId));
             }
+            if (postFilterUserIds != null) {
+                predicates.add(root.get("id").in(postFilterUserIds));
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+
         Page<SysUser> page = userRepository.findAll(spec, pageable);
-        return PageResult.of(page.map(this::toVo));
+        List<SysUserVo> vos = page.getContent().stream().map(this::toVo).toList();
+        Map<Long, SysUserVo> voMap = vos.stream()
+                .collect(Collectors.toMap(v -> Long.valueOf(v.getId()), v -> v, (a, b) -> a));
+        fillRelations(voMap);
+        Page<SysUserVo> result = new PageImpl<>(vos, pageable, page.getTotalElements());
+        return PageResult.of(result);
     }
 
     private boolean notDeleted(SysUser u) {
@@ -137,6 +183,69 @@ public class SysUserServiceImpl implements SysUserService {
                 .orElseThrow(() -> new BusinessException("用户不存在或已被删除"));
     }
 
+    /* ---------- 关联集合装载（批量，禁循环单查） ---------- */
+
+    private void fillRelations(Map<Long, SysUserVo> voMap) {
+        List<Long> userIds = new ArrayList<>(voMap.keySet());
+        if (userIds.isEmpty()) {
+            return;
+        }
+        // 三个关联表各一次 IN 批量查询，内存分组
+        Map<Long, List<String>> deptMap = userDeptRepository.findByUserIdIn(userIds).stream()
+                .collect(Collectors.groupingBy(SysUserDept::getUserId,
+                        Collectors.mapping(r -> String.valueOf(r.getDeptId()), Collectors.toList())));
+        Map<Long, List<String>> postMap = userPostRepository.findByUserIdIn(userIds).stream()
+                .collect(Collectors.groupingBy(SysUserPost::getUserId,
+                        Collectors.mapping(r -> String.valueOf(r.getPostId()), Collectors.toList())));
+        Map<Long, List<String>> roleMap = userRoleRepository.findByUserIdIn(userIds).stream()
+                .collect(Collectors.groupingBy(SysUserRole::getUserId,
+                        Collectors.mapping(r -> String.valueOf(r.getRoleId()), Collectors.toList())));
+        voMap.forEach((uid, vo) -> {
+            vo.setDeptIds(deptMap.getOrDefault(uid, List.of()));
+            vo.setPostIds(postMap.getOrDefault(uid, List.of()));
+            vo.setRoleIds(roleMap.getOrDefault(uid, List.of()));
+        });
+    }
+
+    private void saveUserDepts(Long userId, List<Long> deptIds) {
+        if (deptIds == null || deptIds.isEmpty()) {
+            return;
+        }
+        userDeptRepository.saveAll(deptIds.stream()
+                .map(id -> {
+                    SysUserDept rel = new SysUserDept();
+                    rel.setUserId(userId);
+                    rel.setDeptId(id);
+                    return rel;
+                }).toList());
+    }
+
+    private void saveUserPosts(Long userId, List<Long> postIds) {
+        if (postIds == null || postIds.isEmpty()) {
+            return;
+        }
+        userPostRepository.saveAll(postIds.stream()
+                .map(id -> {
+                    SysUserPost rel = new SysUserPost();
+                    rel.setUserId(userId);
+                    rel.setPostId(id);
+                    return rel;
+                }).toList());
+    }
+
+    private void saveUserRoles(Long userId, List<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return;
+        }
+        userRoleRepository.saveAll(roleIds.stream()
+                .map(id -> {
+                    SysUserRole rel = new SysUserRole();
+                    rel.setUserId(userId);
+                    rel.setRoleId(id);
+                    return rel;
+                }).toList());
+    }
+
     private SysUserVo toVo(SysUser user) {
         SysUserVo vo = new SysUserVo();
         vo.setId(String.valueOf(user.getId()));
@@ -146,6 +255,7 @@ public class SysUserServiceImpl implements SysUserService {
         vo.setPhone(user.getPhone());
         vo.setDeptId(user.getDeptId() == null ? null : String.valueOf(user.getDeptId()));
         vo.setStatus(user.getStatus());
+        vo.setVersion(String.valueOf(user.getVersion()));
         vo.setCreateTime(user.getCreateTime());
         vo.setUpdateTime(user.getUpdateTime());
         return vo;

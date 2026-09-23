@@ -90,6 +90,7 @@ public class SysRoleServiceImpl implements SysRoleService {
         vo.setSort(role.getSort());
         vo.setStatus(role.getStatus());
         vo.setRemark(role.getRemark());
+        vo.setVersion(String.valueOf(role.getVersion()));
         vo.setCreateTime(role.getCreateTime());
         return vo;
     }

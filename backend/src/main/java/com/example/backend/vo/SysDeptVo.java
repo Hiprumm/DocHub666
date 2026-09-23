@@ -20,5 +20,6 @@ public class SysDeptVo implements Serializable {
     private Integer orderNum;
     private String leaderUserId;
     private Integer status;
+    private String version;
     private LocalDateTime createTime;
 }

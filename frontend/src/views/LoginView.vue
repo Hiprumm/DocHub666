@@ -1,18 +1,12 @@
 <script setup lang="ts">
 /**
- * LoginView —— 登录页（“去 AI 味 · 深海编辑感”重构）
- * 视觉依据：docs/02-design/DESIGN_SYSTEM.md + 本页构成设计要求
- * 业务功能逻辑保持不变：邮箱/密码校验、密码显隐、记住我持久化、模拟登录跳转。
- *
- * 布局：桌面 ≥1024px 左右分栏（左 55% 品牌叙事 / 右 45% 表单）；
- *       <1024px 折叠为顶部紧凑 Banner + 表单全宽。
- * 色规纪律：#D1FFFF 唯一强调色（≤5%）；正文 #AAD9F2；次文本 #618EA5；
- *           placeholder #85B3CB；边框/发丝线 #134155。
+ * LoginView —— 登录页正式暖棕「纸质笔记本」版
+ * 布局：左书脊氛围区（暖棕 #492D22）+ 右侧呼吸书页表单（浅纸 #F0E8DD）。
+ * 业务逻辑完整保留：用户名/密码校验、RSA 密码加密传输（公钥可用则加密，
+ * 否则明文回退）、记住我持久化、loading/服务器错误提示、登录后跳转仪表盘。
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import BaseInput from '@/components/BaseInput.vue'
-import BaseButton from '@/components/BaseButton.vue'
 import { getRememberedEmail, setRememberedEmail, setAuth } from '@/utils/storage'
 import { MIN_PASSWORD_LENGTH } from '@/utils/validation'
 import { loginApi, getPublicKeyApi } from '@/api/auth'
@@ -33,7 +27,6 @@ const form = reactive<LoginForm>({
 })
 const showPassword = ref(false)
 const loading = ref(false)
-// 后端返回的错误提示（账号/密码错误、停用等）
 const serverError = ref('')
 
 const errors = reactive<{ username: string; password: string }>({
@@ -41,7 +34,7 @@ const errors = reactive<{ username: string; password: string }>({
   password: '',
 })
 
-// 勾选“记住我”则回填已存邮箱（用户名）
+// 勾选“记住我”则回填已存用户名
 onMounted(() => {
   const saved = getRememberedEmail()
   if (saved) {
@@ -68,7 +61,7 @@ const canSubmit = computed(
 )
 
 /**
- * 提交：校验 → 调用后端 /auth/login → 成功存 token 跳仪表盘；失败展示后端错误。
+ * 提交：校验 → 尝试拉取公钥对密码 RSA 加密 → /auth/login → 存 token 跳仪表盘。
  */
 async function handleSubmit() {
   if (loading.value) return
@@ -82,7 +75,6 @@ async function handleSubmit() {
 
   loading.value = true
   try {
-    // RSA 加密：若后端下发了公钥则加密密码提交，否则明文回退
     let password = form.password
     try {
       const pub = await getPublicKeyApi()
@@ -105,442 +97,386 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <main class="login-page">
-    <!-- 深海蓝径向渐变光斑（透明度 ≤8%，非大面积发光） -->
-    <div class="login-glow" aria-hidden="true">
-      <span class="login-glow__dot login-glow__dot--1" />
-      <span class="login-glow__dot login-glow__dot--2" />
-      <span class="login-glow__dot login-glow__dot--3" />
-    </div>
-    <!-- SVG film grain 噪点层（opacity 3–5%） -->
-    <div class="login-grain" aria-hidden="true" />
+  <main class="paper-login">
+    <!-- 左：书籍扉页氛围区 -->
+    <section class="marker" aria-labelledby="login-headline">
+      <div class="marker-top">
+        <span class="marker-logo" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="3" stroke="currentColor" stroke-width="1" />
+            <path d="M9 8h9l5 5v11H9z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+            <path d="M18 8v5h5" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+            <path d="M13 19h7M13 22h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          </svg>
+        </span>
+        <p class="marker-kicker">DocHub</p>
+      </div>
 
-    <div class="login-layout">
-      <!-- 品牌区：桌面为左栏叙事，移动端折叠为顶部 Banner -->
-      <section class="login-brand" aria-labelledby="login-headline">
-        <div class="login-brand__banner">
-          <span class="login-brand__logo" aria-hidden="true">
-            <svg width="34" height="34" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="7" stroke="var(--color-accent-mark)" stroke-width="1" />
-              <path
-                d="M9 8h9l5 5v11H9z"
-                stroke="var(--color-accent-mark)"
-                stroke-width="1.4"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M18 8v5h5"
-                stroke="var(--color-accent-mark)"
-                stroke-width="1.4"
-                stroke-linejoin="round"
-              />
-              <path d="M13 19h7M13 22h5" stroke="var(--color-accent-mark)" stroke-width="1.2" stroke-linecap="round" />
-            </svg>
-          </span>
-          <span class="login-brand__name">DocHub</span>
-        </div>
+      <h1 id="login-headline" class="marker-title">
+        把知识，<br>写进纸页里。
+      </h1>
+      <p class="marker-blurb">
+        一个安静的企业文档平台。检索、阅读、协作，都像翻开一本装帧考究的书——
+        工具退到背景，让人回到内容本身。
+      </p>
+      <div class="marker-rule" aria-hidden="true" />
+      <p class="marker-note">为长时间阅读与编辑的知识工作者而作</p>
+    </section>
 
-        <!-- 桌面端展示区 -->
-        <div class="login-brand__body">
-          <h1 id="login-headline" class="login-headline">知识，沉得住</h1>
-          <p class="login-value">让每一份文档，都有归处、有脉络、可被唤醒。</p>
-          <p class="login-value">部门空间沉淀协作，「查看 → 检索 → 合成」驱动团队的文档复利。</p>
+    <!-- 右：书页式登录表单 -->
+    <section class="form-wrap" aria-label="登录表单">
+      <form class="form" novalidate @submit.prevent="handleSubmit">
+        <p class="form-kicker">登录到你的工作空间</p>
+        <h2 class="form-title">欢迎回来</h2>
 
-          <!-- 文档缩略线框网格装饰（发丝线 #134155，≤15%） -->
-          <div class="login-frames" aria-hidden="true">
-            <span v-for="n in 6" :key="n" class="login-frames__doc">
-              <span class="login-frames__bar" />
-              <span class="login-frames__line" />
-              <span class="login-frames__line" />
-              <span class="login-frames__line login-frames__line--short" />
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <!-- 表单区：无卡片容器，靠明度分层 #001325 -->
-      <section class="login-form-panel" aria-label="登录表单">
-        <form class="login-form" novalidate @submit.prevent="handleSubmit">
-          <BaseInput
-            id="login-username"
+        <label class="field">
+          <span class="field-lbl">账号</span>
+          <input
             v-model="form.username"
-            label="USERNAME"
+            class="field-ip"
             type="text"
-            placeholder="请输入用户名"
+            name="username"
             autocomplete="username"
-            :error="errors.username"
+            placeholder="你的用户名"
             @blur="validateField('username')"
-          />
-          <BaseInput
-            id="login-password"
-            v-model="form.password"
-            label="PASSWORD"
-            :type="showPassword ? 'text' : 'password'"
-            placeholder="至少 8 位"
-            autocomplete="current-password"
-            :error="errors.password"
-            @blur="validateField('password')"
           >
-            <template #suffix>
-              <button
-                type="button"
-                class="login-password-toggle"
-                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-                :aria-pressed="showPassword"
-                @click="showPassword = !showPassword"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"
-                    stroke="currentColor"
-                    stroke-width="1.4"
-                    stroke-linejoin="round"
-                  />
-                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.4" />
-                </svg>
-              </button>
-            </template>
-          </BaseInput>
+          <span v-if="errors.username" class="field-err" role="alert">{{ errors.username }}</span>
+        </label>
 
-          <!-- 记住我 -->
-          <div class="login-options">
-            <label class="login-check">
-              <input v-model="form.remember" type="checkbox" class="login-check__box">
-              <span class="login-check__label">记住我</span>
-            </label>
+        <label class="field">
+          <span class="field-lbl">密码</span>
+          <div class="field-ip-wrap">
+            <input
+              v-model="form.password"
+              class="field-ip field-ip--pass"
+              :type="showPassword ? 'text' : 'password'"
+              name="password"
+              autocomplete="current-password"
+              placeholder="至少 8 位"
+              @blur="validateField('password')"
+            >
+            <button
+              type="button"
+              class="field-eye"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.4" />
+              </svg>
+            </button>
           </div>
+          <span v-if="errors.password" class="field-err" role="alert">{{ errors.password }}</span>
+        </label>
 
-          <p v-if="serverError" class="login-error" role="alert">{{ serverError }}</p>
+        <div class="form-options">
+          <label class="check">
+            <input v-model="form.remember" type="checkbox" class="check__box">
+            <span class="check__label">记住我</span>
+          </label>
+        </div>
 
-          <BaseButton
-            type="submit"
-            variant="primary"
-            size="lg"
-            :loading="loading"
-            :disabled="!canSubmit"
-            class="login-submit"
-          >
-            {{ loading ? '登录中…' : '登 录' }}
-          </BaseButton>
+        <p v-if="serverError" class="form-error" role="alert">{{ serverError }}</p>
 
-        </form>
+        <button
+          class="submit"
+          type="submit"
+          :disabled="loading || !canSubmit"
+        >
+          {{ loading ? '登录中…' : '进入工作空间' }}
+        </button>
 
-        <!-- 版本信息（等宽字体） -->
-        <p class="login-version">DocHub v0.1.0 · build 0x0a1f</p>
-      </section>
-    </div>
+        <p class="form-foot">需要帮助？联系你的系统管理员。</p>
+      </form>
+      <p class="form-version">DocHub v0.1.0</p>
+    </section>
   </main>
 </template>
 
 <style scoped>
-.login-page {
-  position: relative;
+/* =====================================================================
+ * 登录页 —— 暖棕「纸质笔记本」，色值全部走全局 Token（tokens.css）
+ * 不在此硬编码任何颜色。
+ * ===================================================================== */
+.paper-login {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 0;
   min-height: 100vh;
-  display: flex;
-  align-items: stretch;
-  background-color: var(--color-bg-base); /* #000515 */
-  overflow: hidden;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- 深海蓝径向渐变光斑（≤8%） ---------- */
-.login-glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-.login-glow__dot {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-}
-.login-glow__dot--1 {
-  width: 480px;
-  height: 480px;
-  top: -160px;
-  right: 8%;
-  background: rgba(0, 42, 61, 0.08); /* #002A3D ≤8% */
-}
-.login-glow__dot--2 {
-  width: 420px;
-  height: 420px;
-  bottom: -140px;
-  left: 30%;
-  background: rgba(19, 65, 85, 0.07); /* #134155 ≤8% */
-}
-.login-glow__dot--3 {
-  width: 300px;
-  height: 300px;
-  top: 40%;
-  left: -120px;
-  background: rgba(0, 19, 37, 0.08); /* #001325 ≤8% */
-}
-
-/* ---------- SVG film grain 噪点层（opacity ~4%） ---------- */
-.login-grain {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-}
-
-/* ---------- 左右分栏布局 ---------- */
-.login-layout {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 55% 45%;
-  width: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
-}
-
-/* ---------- 品牌区（左 55%） ---------- */
-.login-brand {
+/* ---------- 左：书脊氛围 ---------- */
+.marker {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: var(--space-16);
-  gap: var(--space-12);
+  gap: var(--space-6);
+  padding: clamp(40px, 8vw, 96px);
+  background: var(--color-accent-mark);
+  color: var(--color-text-on-accent);
 }
-.login-brand__banner {
-  display: none; /* 桌面隐藏，移动端才显示 */
+.marker-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-on-accent);
 }
-.login-brand__logo {
+.marker-logo {
   display: inline-flex;
+  opacity: 0.9;
 }
-.login-brand__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: 460px;
-}
-.login-headline {
+.marker-kicker {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 56px;
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  color: var(--color-text-secondary); /* #AAD9F2，非纯白 */
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  opacity: 0.82;
 }
-.login-value {
+.marker-title {
   margin: 0;
-  font-size: var(--text-body-lg);
-  line-height: 1.6;
-  color: var(--color-text-secondary); /* #AAD9F2 */
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+.marker-blurb {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 17px;
+  line-height: 1.85;
+  opacity: 0.86;
+}
+.marker-rule {
+  width: 56px;
+  height: 2px;
+  background: var(--color-text-on-accent);
+  opacity: 0.7;
+}
+.marker-note {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.6;
 }
 
-/* 文档缩略线框网格（发丝线） */
-.login-frames {
-  margin-top: var(--space-8);
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
-  max-width: 420px;
-}
-.login-frames__doc {
+/* ---------- 右：书页表单 ---------- */
+.form-wrap {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: var(--space-3);
-  border: 1px solid rgba(19, 65, 85, 0.13); /* #134155 ≤15% */
-  border-radius: var(--radius-xs);
-  min-height: 118px;
-}
-.login-frames__bar {
-  height: 1px;
-  width: 40%;
-  background: rgba(19, 65, 85, 0.15);
-}
-.login-frames__line {
-  height: 1px;
-  width: 100%;
-  background: rgba(19, 65, 85, 0.13);
-}
-.login-frames__line--short {
-  width: 62%;
-}
-
-/* ---------- 表单区（右 45%，无卡片，靠明度分层） ---------- */
-.login-form-panel {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: var(--space-8);
-  padding: var(--space-16) var(--space-16) var(--space-8);
-  background-color: var(--color-surface-card); /* #001325 局部底 */
-  box-shadow: -16px 0 40px rgba(0, 13, 24, 0.5); /* 同色温 tinted shadow */
-  max-width: 620px;
-}
-.login-form {
-  display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  max-width: 360px;
+  gap: var(--space-8);
+  padding: clamp(32px, 6vw, 72px);
+  background:
+    radial-gradient(120% 90% at 70% -10%, rgba(255, 255, 255, 0.55), transparent 55%),
+    var(--color-bg-canvas);
+}
+.form {
   width: 100%;
+  max-width: 380px;
+}
+.form-kicker {
+  margin: 0 0 10px;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+.form-title {
+  margin: 0 0 36px;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 30px;
+  line-height: 1.3;
 }
 
-/* ---------- 密码显隐切换（图标按钮） ---------- */
-.login-password-toggle {
+/* ---------- 字段 ---------- */
+.field {
+  display: block;
+  margin-bottom: 22px;
+}
+.field-lbl {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--color-accent);
+}
+.field-ip {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--color-text-primary);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-xs);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.field-ip::placeholder {
+  color: var(--color-text-placeholder);
+}
+.field-ip:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--glow-input-focus);
+}
+.field-ip-wrap {
+  position: relative;
+}
+.field-ip--pass {
+  padding-right: 44px;
+}
+.field-eye {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--color-text-muted); /* #618EA5 图标/次要文字 */
+  color: var(--color-text-tertiary);
   cursor: pointer;
-  transition:
-    color var(--dur-fast) var(--ease-out),
-    background-color var(--dur-fast) var(--ease-out);
+  transition: color 180ms ease;
 }
-.login-password-toggle:hover {
-  color: var(--color-accent-mark); /* #D1FFFF 唯一强调 hover */
-  background-color: var(--color-surface-card);
+.field-eye:hover {
+  color: var(--color-accent);
+}
+.field-err {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--color-error);
 }
 
-/* ---------- 记住我 复选框 ---------- */
-.login-options {
+/* ---------- 记住我 ---------- */
+.form-options {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
 }
-.login-check {
+.check {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   cursor: pointer;
 }
-.login-check__box {
+.check__box {
   appearance: none;
   width: 15px;
   height: 15px;
   margin: 0;
-  border: 1px solid var(--color-border-default); /* #2E5A6F */
+  border: 1px solid var(--color-border-strong);
   border-radius: 2px;
-  background-color: transparent;
+  background: var(--color-surface-card);
   cursor: pointer;
   position: relative;
-  transition: background-color var(--dur-fast) var(--ease-out);
+  transition: background-color var(--dur-fast);
 }
-.login-check__box:hover {
-  border-color: var(--color-border-strong);
+.check__box:hover {
+  border-color: var(--color-accent);
 }
-.login-check__box:checked {
-  background-color: var(--color-accent-mark); /* #D1FFFF 少量强调 */
-  border-color: var(--color-accent-mark);
+.check__box:checked {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
 }
-.login-check__box:checked::after {
+.check__box:checked::after {
   content: '';
   position: absolute;
   left: 4px;
   top: 1px;
   width: 4px;
   height: 8px;
-  border: solid var(--color-bg-base);
+  border: solid var(--color-text-on-accent);
   border-width: 0 1.6px 1.6px 0;
   transform: rotate(45deg);
 }
-.login-check__label {
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-muted); /* #618EA5 次要文字 */
+.check__label {
+  font-size: 14px;
+  color: var(--color-text-tertiary);
 }
 
-/* ---------- 服务器返回的错误提示 ---------- */
-.login-error {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-body-sm);
-  color: var(--color-danger, #e5738f);
+/* ---------- 服务器错误 ---------- */
+.form-error {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  color: var(--color-error);
   line-height: 1.5;
 }
 
-/* ---------- 主按钮全宽 ---------- */
-.login-submit {
+/* ---------- 主按钮 ---------- */
+.submit {
   width: 100%;
   margin-top: var(--space-2);
+  padding: 13px 16px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--color-btn-primary-fg);
+  background: var(--color-btn-primary-bg);
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background-color 180ms ease;
 }
-
-/* ---------- 版本信息（等宽字，12px #618EA5） ---------- */
-.login-version {
+.submit:hover:not(:disabled) {
+  background: var(--color-btn-primary-bg-hover);
+}
+.submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.form-foot {
+  margin: 26px 0 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--color-text-tertiary);
+}
+.form-version {
   margin: 0;
-  font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.06em;
-  color: var(--color-text-muted); /* #618EA5 */
+  color: var(--color-text-placeholder);
 }
 
-/* ============================================================
- * 响应式
- * ============================================================ */
-/* <1024px：品牌折叠为顶部 Banner，表单全宽主导 */
-@media (max-width: 1023px) {
-  .login-layout {
+/* ---------- 窄屏 ---------- */
+@media (max-width: 760px) {
+  .paper-login {
     grid-template-columns: 1fr;
   }
-  .login-brand {
-    padding: var(--space-6);
-    gap: 0;
-    align-items: center;
+  .marker {
+    padding: 44px 28px;
+    gap: var(--space-4);
   }
-  .login-brand__banner {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+  .marker-blurb,
+  .marker-note,
+  .marker-rule {
+    display: none;
   }
-  .login-brand__name {
-    font-family: var(--font-display);
-    font-size: var(--text-h2);
-    font-weight: 600;
-    color: var(--color-text-secondary);
+  .marker-title {
+    font-size: 30px;
   }
-  .login-brand__body {
-    display: none; /* 桌面叙事区折叠隐藏 */
-  }
-  .login-form-panel {
-    padding: var(--space-8) var(--space-6) var(--space-6);
-    max-width: none;
-    box-shadow: none;
-    align-items: center;
-  }
-  .login-version {
-    align-self: center;
+  .form-wrap {
+    padding: 48px 28px;
   }
 }
 
-/* 375px：无横向滚动，卡片级留白收紧 */
-@media (max-width: 375px) {
-  .login-page {
-    overflow-x: hidden;
-  }
-  .login-brand {
-    padding: var(--space-4);
-  }
-  .login-form-panel {
-    padding: var(--space-6) var(--space-4);
-  }
-}
-
-/* 入场动效：品牌与表单按 80ms 级联淡入上移，总时长 ≤500ms */
+/* 入场动效：书页内容淡入上移，总时长 ≤500ms，尊重 reduced-motion */
 @media (prefers-reduced-motion: no-preference) {
-  .login-brand__banner,
-  .login-brand__body,
-  .login-form-panel {
+  .marker,
+  .form-wrap {
     animation: fade-up var(--dur-slow) var(--ease-out) both;
   }
-  .login-brand__body {
-    animation-delay: 0.08s;
-  }
-  .login-form-panel {
-    animation-delay: 0.16s;
+  .form-wrap {
+    animation-delay: 0.12s;
   }
 }
 @keyframes fade-up {

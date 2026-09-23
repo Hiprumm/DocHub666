@@ -2,11 +2,12 @@ package com.example.backend.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.List;
 
 /**
  * 创建用户请求 DTO。
@@ -33,8 +34,16 @@ public class SysUserCreateDto {
     @Pattern(regexp = "^$|^1[3-9]\\d{9}$", message = "手机号格式不正确")
     private String phone;
 
-    @NotNull(message = "所属部门不能为空")
     private Long deptId;
 
     private Integer status = 0;
+
+    /** 初始多部门集合（可空，批量建立关联） */
+    private List<Long> deptIds;
+
+    /** 初始岗位集合（可空） */
+    private List<Long> postIds;
+
+    /** 初始角色集合（可空） */
+    private List<Long> roleIds;
 }

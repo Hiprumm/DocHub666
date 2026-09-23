@@ -23,5 +23,6 @@ public class SysPermissionVo implements Serializable {
     private String method;
     private Integer sort;
     private Integer status;
+    private String version;
     private LocalDateTime createTime;
 }

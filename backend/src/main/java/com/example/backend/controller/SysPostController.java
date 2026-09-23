@@ -2,10 +2,10 @@ package com.example.backend.controller;
 
 import com.example.backend.common.PageResult;
 import com.example.backend.common.Result;
-import com.example.backend.dto.SysRoleDto;
+import com.example.backend.dto.SysPostDto;
 import com.example.backend.security.RequirePermission;
-import com.example.backend.service.SysRoleService;
-import com.example.backend.vo.SysRoleVo;
+import com.example.backend.service.SysPostService;
+import com.example.backend.vo.SysPostVo;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,45 +19,45 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 角色管理 REST 接口。
+ * 岗位管理 REST 接口。
  */
 @RestController
-@RequestMapping("/sys/role")
+@RequestMapping("/sys/post")
 @RequiredArgsConstructor
-public class SysRoleController {
+public class SysPostController {
 
-    private final SysRoleService roleService;
+    private final SysPostService postService;
 
     @PostMapping
-    @RequirePermission("system:role:add")
-    public Result<SysRoleVo> create(@Valid @RequestBody SysRoleDto dto) {
-        return Result.ok(roleService.save(dto));
+    @RequirePermission("system:post:add")
+    public Result<SysPostVo> create(@Valid @RequestBody SysPostDto dto) {
+        return Result.ok(postService.save(dto));
     }
 
     @PutMapping
-    @RequirePermission("system:role:update")
-    public Result<SysRoleVo> update(@Valid @RequestBody SysRoleDto dto) {
-        return Result.ok(roleService.save(dto));
+    @RequirePermission("system:post:update")
+    public Result<SysPostVo> update(@Valid @RequestBody SysPostDto dto) {
+        return Result.ok(postService.save(dto));
     }
 
     @DeleteMapping("/{id}")
-    @RequirePermission("system:role:delete")
+    @RequirePermission("system:post:delete")
     public Result<Void> delete(@PathVariable Long id) {
-        roleService.delete(id);
+        postService.delete(id);
         return Result.ok();
     }
 
     @GetMapping("/{id}")
-    @RequirePermission("system:role:query")
-    public Result<SysRoleVo> getById(@PathVariable Long id) {
-        return Result.ok(roleService.getById(id));
+    @RequirePermission("system:post:query")
+    public Result<SysPostVo> getById(@PathVariable Long id) {
+        return Result.ok(postService.getById(id));
     }
 
     @GetMapping("/list")
-    @RequirePermission("system:role:query")
-    public Result<PageResult<SysRoleVo>> page(
+    @RequirePermission("system:post:query")
+    public Result<PageResult<SysPostVo>> page(
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.ok(roleService.page(pageNum, pageSize));
+        return Result.ok(postService.page(pageNum, pageSize));
     }
 }

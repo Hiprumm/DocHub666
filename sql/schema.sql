@@ -45,8 +45,68 @@ CREATE TABLE `sys_dept` (
   COMMENT = '系统组织部门表（树形扁平设计）';
 
 -- ------------------------------------------------------------------
--- 2. 用户表 sys_user
---    dept_id 为单值逻辑外键（严格一对多，一名用户唯一部门）。
+-- 2. 岗位表 sys_post（复用 sys_role 列集风格）
+-- ------------------------------------------------------------------
+DROP TABLE IF EXISTS `sys_post`;
+CREATE TABLE `sys_post` (
+    `id`           BIGINT       NOT NULL                COMMENT '岗位ID（雪花算法）',
+    `post_name`    VARCHAR(50)  NOT NULL                COMMENT '岗位名称（展示用）',
+    `post_key`     VARCHAR(50)  NOT NULL                COMMENT '岗位标识（唯一，如 manager/member）',
+    `sort`         INT          NOT NULL DEFAULT 0      COMMENT '显示排序号',
+    `status`       TINYINT      NOT NULL DEFAULT 0      COMMENT '岗位状态（0:正常 1:停用）',
+    `version`      INT          NOT NULL DEFAULT 0      COMMENT '乐观锁版本号（@Version）',
+    `remark`       VARCHAR(255) NULL                    COMMENT '岗位备注',
+    `create_by`    BIGINT       NULL                    COMMENT '创建人用户ID',
+    `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by`    BIGINT       NULL                    COMMENT '更新人用户ID',
+    `update_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `is_deleted`   TINYINT(1)   NOT NULL DEFAULT 0      COMMENT '逻辑删除标记（0:正常 1:已删除）',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_post_key` (`post_key`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci
+  COMMENT = '系统岗位表';
+
+-- ------------------------------------------------------------------
+-- 用户-部门关联表 sys_user_dept（多对多：一名用户可属多个部门）
+-- ------------------------------------------------------------------
+DROP TABLE IF EXISTS `sys_user_dept`;
+CREATE TABLE `sys_user_dept` (
+    `id`          BIGINT   NOT NULL                  COMMENT '关联ID（雪花算法）',
+    `user_id`     BIGINT   NOT NULL                  COMMENT '用户ID（逻辑外键 sys_user.id）',
+    `dept_id`     BIGINT   NOT NULL                  COMMENT '部门ID（逻辑外键 sys_dept.id）',
+    `create_by`   BIGINT   NULL                      COMMENT '绑定人用户ID',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '绑定时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_dept` (`user_id`, `dept_id`),
+    KEY `idx_ud_dept_id` (`dept_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci
+  COMMENT = '用户-部门关联表（多对多）';
+
+-- ------------------------------------------------------------------
+-- 用户-岗位关联表 sys_user_post（多对多：一名用户可兼任多岗位）
+-- ------------------------------------------------------------------
+DROP TABLE IF EXISTS `sys_user_post`;
+CREATE TABLE `sys_user_post` (
+    `id`          BIGINT   NOT NULL                  COMMENT '关联ID（雪花算法）',
+    `user_id`     BIGINT   NOT NULL                  COMMENT '用户ID（逻辑外键 sys_user.id）',
+    `post_id`     BIGINT   NOT NULL                  COMMENT '岗位ID（逻辑外键 sys_post.id）',
+    `create_by`   BIGINT   NULL                      COMMENT '绑定人用户ID',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '绑定时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_post` (`user_id`, `post_id`),
+    KEY `idx_usp_post_id` (`post_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci
+  COMMENT = '用户-岗位关联表（多对多）';
+
+-- ------------------------------------------------------------------
+-- 3. 用户表 sys_user
+--    dept_id 为单值逻辑外键（主部门，可空）。
 -- ------------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_user`;
 CREATE TABLE `sys_user` (
@@ -56,7 +116,7 @@ CREATE TABLE `sys_user` (
     `real_name`    VARCHAR(50)  NULL                    COMMENT '真实姓名',
     `email`        VARCHAR(100) NULL                    COMMENT '工作邮箱',
     `phone`        VARCHAR(20)  NULL                    COMMENT '手机号',
-    `dept_id`      BIGINT       NOT NULL                COMMENT '所属部门ID（逻辑外键 sys_dept.id，一对一）',
+    `dept_id`      BIGINT       NULL                    COMMENT '主部门ID（逻辑外键 sys_dept.id，可空；完整多部门见 sys_user_dept）',
     `status`       TINYINT      NOT NULL DEFAULT 0      COMMENT '账号状态（0:正常 1:停用）',
     `version`      INT          NOT NULL DEFAULT 0      COMMENT '乐观锁版本号（@Version）',
     `create_by`    BIGINT       NULL                    COMMENT '创建人用户ID',

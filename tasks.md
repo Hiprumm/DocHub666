@@ -70,6 +70,19 @@
 
 ---
 
+## M4 系统管理模块
+
+- [x] **M4-T1** 多对多关系改造（sys_post/sys_user_dept/sys_user_post + dept_id 可空）
+- [x] **M4-T2** 岗位管理（SysPost 全套 CRUD）
+- [x] **M4-T3** 关联分配服务（SysRelation 全套 assign/list）
+- [x] **M4-T4** 用户列表岗位过滤 + VO 关联装配
+- [x] **M4-T5** 操作日志分页查询（SysAuditLogController）
+- [x] **M4-T6** 全部管理控制器 @RequirePermission + 废弃旧 SysAuthController
+- [x] **M4-T7** seed 数据（system:* 权限点 + admin）
+- [x] **M4-T8** 前端系统管理页面
+
+---
+
 ## 硬约束（任何任务完成后复核）
 - [ ] 命名 100% 对齐 `docs/01-requirements/GLOSSARY.md`，未脑补字段
 - [ ] 主表含 `@Version`，更新 DTO 带 version + Service 前置比对 + 409 兜底

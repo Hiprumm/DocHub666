@@ -133,6 +133,7 @@ public class SysPermissionServiceImpl implements SysPermissionService {
         vo.setMethod(perm.getMethod());
         vo.setSort(perm.getSort());
         vo.setStatus(perm.getStatus());
+        vo.setVersion(String.valueOf(perm.getVersion()));
         vo.setCreateTime(perm.getCreateTime());
         return vo;
     }

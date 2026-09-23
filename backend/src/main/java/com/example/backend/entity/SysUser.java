@@ -37,8 +37,8 @@ public class SysUser extends BaseEntity {
     @Column(name = "phone", length = 20)
     private String phone;
 
-    /** 所属部门ID（逻辑外键 sys_dept.id） */
-    @Column(name = "dept_id", nullable = false)
+    /** 主部门ID（逻辑外键 sys_dept.id，可空；完整多部门见 sys_user_dept） */
+    @Column(name = "dept_id")
     private Long deptId;
 
     /** 账号状态：0-正常 1-停用 */
