@@ -13,15 +13,20 @@ public final class AuthContext {
     }
 
     /** 当前请求用户信息（不可变记录） */
-    public record UserInfo(Long userId, String username, String roleKey) {
+    public record UserInfo(Long userId, String username, String roleKey, String sessionId, Long version) {
+
+        /** 兼容旧调用：不携带会话信息时 version/sessionId 为 null */
+        public UserInfo(Long userId, String username, String roleKey) {
+            this(userId, username, roleKey, null, null);
+        }
     }
 
     /** ThreadLocal 持有当前请求的用户标识信息 */
     private static final ThreadLocal<UserInfo> HOLDER = new ThreadLocal<>();
 
-    /** 填充当前请求用户信息 */
-    public static void set(Long userId, String username, String roleKey) {
-        HOLDER.set(new UserInfo(userId, username, roleKey));
+    /** 填充当前请求用户信息（含会话标识与版本） */
+    public static void set(Long userId, String username, String roleKey, String sessionId, Long version) {
+        HOLDER.set(new UserInfo(userId, username, roleKey, sessionId, version));
     }
 
     /** 当前登录用户ID（未登录返回 null） */
@@ -40,6 +45,18 @@ public final class AuthContext {
     public static String getCurrentRoleKey() {
         UserInfo info = HOLDER.get();
         return info == null ? null : info.roleKey();
+    }
+
+    /** 当前登录用户的会话标识（未携带返回 null） */
+    public static String getCurrentSessionId() {
+        UserInfo info = HOLDER.get();
+        return info == null ? null : info.sessionId();
+    }
+
+    /** 当前登录用户的会话版本号（未携带返回 null） */
+    public static Long getCurrentVersion() {
+        UserInfo info = HOLDER.get();
+        return info == null ? null : info.version();
     }
 
     /** 当前是否已登录（存在有效 userId） */

@@ -15,7 +15,8 @@ import BaseInput from '@/components/BaseInput.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import { getRememberedEmail, setRememberedEmail, setAuth } from '@/utils/storage'
 import { MIN_PASSWORD_LENGTH } from '@/utils/validation'
-import { loginApi } from '@/api/auth'
+import { loginApi, getPublicKeyApi } from '@/api/auth'
+import { encryptPassword } from '@/utils/rsa'
 
 const router = useRouter()
 
@@ -81,7 +82,17 @@ async function handleSubmit() {
 
   loading.value = true
   try {
-    const result = await loginApi({ username, password: form.password })
+    // RSA 加密：若后端下发了公钥则加密密码提交，否则明文回退
+    let password = form.password
+    try {
+      const pub = await getPublicKeyApi()
+      if (pub.publicKey) {
+        password = await encryptPassword(form.password, pub.publicKey)
+      }
+    } catch {
+      // 公钥拉取失败不影响登录，回落明文
+    }
+    const result = await loginApi({ username, password })
     setAuth(result)
     void router.push('/dashboard')
   } catch (err) {
@@ -191,13 +202,12 @@ async function handleSubmit() {
             </template>
           </BaseInput>
 
-          <!-- 记住我 + 忘记密码 -->
+          <!-- 记住我 -->
           <div class="login-options">
             <label class="login-check">
               <input v-model="form.remember" type="checkbox" class="login-check__box">
               <span class="login-check__label">记住我</span>
             </label>
-            <a href="#" class="login-link" @click.prevent>忘记密码？</a>
           </div>
 
           <p v-if="serverError" class="login-error" role="alert">{{ serverError }}</p>
@@ -213,10 +223,6 @@ async function handleSubmit() {
             {{ loading ? '登录中…' : '登 录' }}
           </BaseButton>
 
-          <div class="login-footer">
-            <span class="login-footer__text">还没有账号？</span>
-            <a href="#" class="login-link" @click.prevent>注册账号</a>
-          </div>
         </form>
 
         <!-- 版本信息（等宽字体） -->
@@ -448,19 +454,6 @@ async function handleSubmit() {
   color: var(--color-text-muted); /* #618EA5 次要文字 */
 }
 
-/* ---------- 链接 ---------- */
-.login-link {
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted); /* #618EA5 */
-  transition: color var(--dur-fast) var(--ease-out);
-}
-.login-link:hover {
-  color: var(--color-accent-mark); /* #D1FFFF 唯一强调 hover */
-  text-decoration: none;
-}
-
 /* ---------- 服务器返回的错误提示 ---------- */
 .login-error {
   margin: 0;
@@ -474,19 +467,6 @@ async function handleSubmit() {
 .login-submit {
   width: 100%;
   margin-top: var(--space-2);
-}
-
-/* ---------- 注册区 ---------- */
-.login-footer {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-1);
-  align-items: baseline;
-}
-.login-footer__text {
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  color: var(--color-text-muted); /* #618EA5 */
 }
 
 /* ---------- 版本信息（等宽字，12px #618EA5） ---------- */

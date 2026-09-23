@@ -18,4 +18,10 @@ public class LoginReq {
     /** 登录密码 */
     @NotBlank(message = "密码不能为空")
     private String password;
+
+    /** 图形验证码 ID（启用验证码时必填，未启用可空） */
+    private String captchaId;
+
+    /** 图形验证码内容（启用验证码时必填，未启用可空） */
+    private String captchaCode;
 }

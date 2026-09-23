@@ -16,10 +16,11 @@ import java.io.IOException;
 /**
  * JWT 解析过滤器。
  *
- * <p>从 {@code Authorization: Bearer <token>} 请求头解析 token，成功后通过
- * {@link AuthContext#set} 填充当前用户信息（仅解析一次，不查库）；token 缺失或非法/过期
- * 则 AuthContext 留空，由后续 Security / {@code @RequirePermission} 切面按需判 401/403。
- * 无论是否成功，{@code finally} 中必须清理 ThreadLocal 防泄漏。</p>
+ * <p>从 {@code Authorization: Bearer <token>} 请求头解析 Access Token，成功后校验其类型与会话
+ * 有效性，并通过 {@link AuthContext#set} 填充当前用户信息（仅解析一次，不查库）；token 缺失、
+ * 是 Refresh Token、非法/过期或会话已失效均视为未认证，AuthContext 留空，由后续 Security /
+ * {@code @RequirePermission} 切面按需判 401/403。无论是否成功，{@code finally} 中必须清理
+ * ThreadLocal 防泄漏。</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtUtil jwtUtil;
+    private final SessionManager sessionManager;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -38,7 +40,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (token != null) {
                 try {
                     Claims claims = jwtUtil.parseToken(token);
-                    AuthContext.set(jwtUtil.getUserId(claims), jwtUtil.getUsername(claims), jwtUtil.getRoleKey(claims));
+                    // 仅接受 Access Token；Refresh Token 不能用于访问受保护资源
+                    if (jwtUtil.isAccess(claims)) {
+                        String sessionId = jwtUtil.getSessionId(claims);
+                        long version = jwtUtil.getVersion(claims);
+                        // 校验会话有效（Redis 不可用时降级为通过）
+                        if (sessionManager.isSessionValid(sessionId, version)) {
+                            AuthContext.set(jwtUtil.getUserId(claims), jwtUtil.getUsername(claims),
+                                    jwtUtil.getRoleKey(claims), sessionId, version);
+                        }
+                    }
                 } catch (Exception ignored) {
                     // token 签名非法或已过期：不在此处抛出，AuthContext 留空，
                     // 由后续鉴权环节（Security 或权限切面）统一返回 401

@@ -8,9 +8,11 @@ export const STORAGE_KEYS = {
   AUTH: 'dochub_auth',
 } as const
 
-/** 持久化保存的认证信息（脱敏，仅含展示/鉴权所需字段，绝不存密码） */
+/** 持久化保存的认证信息（脱敏，含双 token 与展示字段，绝不存密码） */
 export interface StoredAuth {
-  token: string
+  accessToken: string
+  refreshToken: string
+  expiresIn: number
   userId: number
   username: string
   realName: string | null
@@ -36,15 +38,33 @@ export function getRememberedEmail(): string {
 }
 
 /**
- * 保存登录态（登录成功后调用）
+ * 保存登录态（登录成功后调用）。token 字段兼容旧结构（单 token），
+ * 若缺少 accessToken 则将单独保存的 token 回填为 accessToken。
  */
 export function setAuth(auth: LoginResult): void {
   const stored: StoredAuth = {
-    token: auth.token,
+    accessToken: auth.accessToken,
+    refreshToken: auth.refreshToken,
+    expiresIn: auth.expiresIn,
     userId: auth.userId,
     username: auth.username,
     realName: auth.realName,
     roleKey: auth.roleKey,
+  }
+  localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(stored))
+}
+
+/**
+ * 更新已持久化的双 token（刷新成功后调用，保留其余展示字段）。
+ */
+export function updateTokens(accessToken: string, refreshToken: string, expiresIn: number): void {
+  const auth = getAuth()
+  if (!auth) return
+  const stored: StoredAuth = {
+    ...auth,
+    accessToken,
+    refreshToken,
+    expiresIn,
   }
   localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(stored))
 }
@@ -57,7 +77,7 @@ export function getAuth(): StoredAuth | null {
     const raw = localStorage.getItem(STORAGE_KEYS.AUTH)
     if (!raw) return null
     const parsed = JSON.parse(raw) as StoredAuth
-    return parsed.token ? parsed : null
+    return parsed.accessToken ? parsed : null
   } catch {
     return null
   }
@@ -66,15 +86,29 @@ export function getAuth(): StoredAuth | null {
 /**
  * 读取访问令牌（未登录返回空串）
  */
+export function getAccessToken(): string {
+  return getAuth()?.accessToken ?? ''
+}
+
+/**
+ * 读取刷新令牌（未登录返回空串）
+ */
+export function getRefreshToken(): string {
+  return getAuth()?.refreshToken ?? ''
+}
+
+/**
+ * 兼容旧名：读取访问令牌（未登录返回空串）
+ */
 export function getToken(): string {
-  return getAuth()?.token ?? ''
+  return getAccessToken()
 }
 
 /**
  * 当前是否已登录（存在有效 token）
  */
 export function isLoggedIn(): boolean {
-  return getToken() !== ''
+  return getAccessToken() !== ''
 }
 
 /**

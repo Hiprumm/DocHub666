@@ -42,8 +42,8 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 登录接口放行
-                        .requestMatchers("/auth/login").permitAll()
+                        // 免认证白名单：登录、令牌刷新、RSA 公钥、图形验证码
+                        .requestMatchers("/auth/login", "/auth/refresh", "/auth/public-key", "/auth/captcha").permitAll()
                         // 其余端点均要求登录（资源级权限由 @RequirePermission 切面细粒度控制）
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)

@@ -12,8 +12,14 @@ import java.io.Serializable;
 @Setter
 public class LoginResp implements Serializable {
 
-    /** JWT 访问令牌 */
-    private String token;
+    /** 短效访问令牌（Access Token，默认 2h） */
+    private String accessToken;
+
+    /** 长效刷新令牌（Refresh Token，默认 7d，用于换新 access） */
+    private String refreshToken;
+
+    /** Access Token 有效期（秒） */
+    private long expiresIn;
 
     /** 用户ID（Long） */
     private Long userId;

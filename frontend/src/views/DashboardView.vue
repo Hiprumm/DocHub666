@@ -3,9 +3,32 @@
  * DashboardView —— 占位页面
  * 登录成功后跳转目标。视觉遵循设计系统 §4.3 空状态规范。
  */
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { logoutApi } from '@/api/auth'
+import { clearAuth } from '@/utils/storage'
 
 const router = useRouter()
+const loggingOut = ref(false)
+
+/**
+ * 返回登录：需先登出（清本地登录态 + 通知后端使会话失效），
+ * 否则路由守卫会将已登录用户重定向回仪表盘，导致看似"无反应"。
+ * 后端异常不阻塞跳转，保证用户一定能回到登录页。
+ */
+async function goBackToLogin() {
+  loggingOut.value = true
+  try {
+    // 后端会使当前会话（Refresh）失效；失败不影响本地登出
+    await logoutApi()
+  } catch {
+    // 忽略后端异常，继续本地登出
+  } finally {
+    clearAuth()
+    loggingOut.value = false
+    void router.replace('/')
+  }
+}
 </script>
 
 <template>
@@ -20,7 +43,9 @@ const router = useRouter()
       </div>
       <h1 id="empty-title" class="empty-state__title">欢迎使用 DocHub</h1>
       <p class="empty-state__desc">登录成功。此处为仪表盘占位页，后续将承载文档管理功能。</p>
-      <button class="empty-state__action" @click="void router.push('/')">返回登录</button>
+      <button class="empty-state__action" :disabled="loggingOut" @click="goBackToLogin">
+        {{ loggingOut ? '退出中…' : '返回登录' }}
+      </button>
     </section>
   </main>
 </template>
@@ -70,5 +95,9 @@ const router = useRouter()
 .empty-state__action:hover {
   background-color: var(--color-accent-hover);
   box-shadow: var(--glow-accent);
+}
+.empty-state__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 </style>

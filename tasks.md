@@ -59,6 +59,17 @@
 
 ---
 
+## M3 认证安全升级（参考 demo2/backend(2) 设计）
+
+- [x] **AS-1** 双 token + 会话管理（JwtUtil 拆 Access/Refresh、SessionManager、AuthContext 扩展、/auth/refresh 轮换、/auth/logout）
+- [x] **AS-2** 前端 401 自动刷新重放（http.ts single-flight 刷新队列 + storage 双 token）
+- [x] **AS-3** 登录防爆破（LoginBruteforceGuard：5 次锁 10min + IP 60s/20 限流）
+- [x] **AS-4** 图形验证码（CaptchaService 预留开关 + /auth/captcha）
+- [x] **AS-5** RSA 密码加密传输（RsaUtil 私钥解密 + /auth/public-key + 前端 Web Crypto）
+- [x] **AS-6** 薄弱点加固（Token 脱敏、密钥环境变量化、白名单复核、登出使 Refresh 失效）
+
+---
+
 ## 硬约束（任何任务完成后复核）
 - [ ] 命名 100% 对齐 `docs/01-requirements/GLOSSARY.md`，未脑补字段
 - [ ] 主表含 `@Version`，更新 DTO 带 version + Service 前置比对 + 409 兜底

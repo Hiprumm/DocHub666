@@ -1,14 +1,25 @@
-import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import axios, {
+  AxiosError,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from 'axios'
 import type { ApiResult } from '@/types/auth'
-import { getToken, clearAuth } from '@/utils/storage'
+import {
+  getAccessToken,
+  getRefreshToken,
+  updateTokens,
+  clearAuth,
+} from '@/utils/storage'
+import { refreshApi } from './auth'
 
 /**
  * Axios 实例封装。
  *
  * - baseURL 固定 `/backend`（与后端 context-path 一致），本地由 Vite 代理转发到 :10086；
- * - 请求拦截器自动注入 `Authorization: Bearer <token>`（仅当已登录）；
+ * - 请求拦截器自动注入 `Authorization: Bearer <accessToken>`（仅当已登录）；
  * - 响应拦截器解包后端统一 `Result<T>`：业务失败（code!==200）reject 出 message，
- *   登录失效（401/403）清空本地认证态并重定向回登录页。
+ *   Access Token 过期（401）时用 Refresh Token 换新并**重放原请求**（并发仅刷新一次），
+ *   刷新失败或 Refresh 自身失效才清空登录态回登录页。
  */
 
 const http = axios.create({
@@ -17,14 +28,43 @@ const http = axios.create({
 })
 
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = getToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  const accessToken = getAccessToken()
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
   // 禁止浏览器/代理缓存鉴权与业务响应，防止 token/敏感体滞留缓存
   config.headers['Cache-Control'] = 'no-store'
   return config
 })
+
+/** 是否单点刷新令牌的开关：并发 401 只允许一次刷新 */
+let refreshPromise: Promise<void> | null = null
+
+/**
+ * 用 Refresh Token 换新一对令牌（单点串行化）。成功后更新本地存储；
+ * 失败时清空登录态并抛错，交由调用方跳转。
+ */
+function doRefresh(): Promise<void> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    return Promise.reject(new Error('无刷新令牌'))
+  }
+  if (!refreshPromise) {
+    refreshPromise = refreshApi({ refreshToken })
+      .then((res) => {
+        updateTokens(res.accessToken, res.refreshToken, res.expiresIn)
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
+/** 是否当前请求是刷新令牌接口（避免刷新接口自身 401 触发无限递归） */
+function isRefreshRequest(config: { url?: string }): boolean {
+  return (config.url ?? '').includes('/auth/refresh')
+}
 
 http.interceptors.response.use(
   (response) => {
@@ -41,7 +81,31 @@ http.interceptors.response.use(
   (error: AxiosError<ApiResult<unknown>>) => {
     const status = error.response?.status
     const msg = error.response?.data?.message
-    // 未登录 / 凭证过期 / 越权：清空认证态并回登录页
+    const originalConfig = error.config as (AxiosRequestConfig & { _retried?: boolean }) | undefined
+
+    // Access Token 过期：尝试用 Refresh 换新并重放原请求（跳过刷新接口与已重试请求）
+    if (
+      status === 401 &&
+      originalConfig &&
+      !originalConfig._retried &&
+      !isRefreshRequest(originalConfig) &&
+      getRefreshToken()
+    ) {
+      originalConfig._retried = true
+      return doRefresh()
+        .then(() =>
+          http.request<unknown, unknown>(originalConfig) as Promise<unknown>,
+        )
+        .catch(() => {
+          clearAuth()
+          if (window.location.pathname !== '/') {
+            window.location.href = '/'
+          }
+          return Promise.reject(new Error(msg || '登录已过期，请重新登录'))
+        })
+    }
+
+    // 刷新令牌自身失效 / 越权：清空登录态并回登录页
     if (status === 401 || status === 403) {
       clearAuth()
       if (window.location.pathname !== '/') {
