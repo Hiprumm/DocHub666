@@ -104,8 +104,8 @@ function handleClick(ev: MouseEvent) {
   align-items: center;
 }
 
-/* ---------- 主按钮 Primary（登录页“去 AI 味”版式） ----------
- * 背景 #3F6B81 → hover #2E5A6F，文字 #D1FFFF（海洋调，低饱和）。
+/* ---------- 主按钮 Primary ----------
+ * 背景 #492D22（accent-mark）→ hover #2E2118，文字 #F0E8DD（暖棕书皮调）。
  * 值取自 11 色板 Token，未新增色值；hover 仅明度过渡 + 轻微上移，无放大/流光。
  */
 .base-button.is-primary {
@@ -159,11 +159,11 @@ function handleClick(ev: MouseEvent) {
 .base-button:disabled {
   cursor: not-allowed;
   background-color: var(--color-border-disabled);
-  color: rgba(209, 255, 255, 0.4); /* 由 text-primary 40% 透明得来，避硬编码原色 */
+  color: rgba(240, 232, 221, 0.4); /* 由 text-on-accent 40% 透明得来，避硬编码原色 */
 }
 .base-button.is-primary:disabled {
-  /* fg(D1FFFF) 40% 透明，值仍来自 11 色板 */
-  color: rgba(209, 255, 255, 0.4);
+  /* fg(F0E8DD) 40% 透明，值仍来自 11 色板 */
+  color: rgba(240, 232, 221, 0.4);
 }
 .base-button.is-text:disabled,
 .base-button.is-icon:disabled {

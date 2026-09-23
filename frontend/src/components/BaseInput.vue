@@ -67,7 +67,7 @@ defineEmits<{
   font-size: var(--text-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-secondary); /* #AAD9F2 正文/标签 */
+  color: var(--color-text-secondary); /* 正文/标签 */
   font-weight: 500;
 }
 .base-input__wrapper {
@@ -80,20 +80,20 @@ defineEmits<{
   color: var(--color-text-secondary);
   font-size: var(--text-body);
   font-family: var(--font-sans);
-  background-color: var(--color-surface-raised); /* #002A3D */
-  border: 1px solid var(--color-border-default); /* #2E5A6F */
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border-default);
   border-radius: var(--radius-xs);
   transition:
     border-color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
 }
 .base-input__field::placeholder {
-  color: var(--color-text-placeholder-alt); /* #85B3CB 占位 */
+  color: var(--color-text-placeholder-alt); /* 占位 */
 }
 .base-input__field:hover:not(:disabled) {
   border-color: var(--color-border-strong);
 }
-/* 聚焦态：边框 1.5px #2E5A6F + 内阴影微光晕（150ms ease-out） */
+/* 聚焦态：边框 1.5px border-default + 内阴影微光晕（150ms ease-out） */
 .base-input__field:focus-visible {
   outline: none;
   border-width: 1.5px;
