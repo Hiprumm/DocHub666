@@ -1,6 +1,7 @@
 package com.example.backend.service.impl;
 
 import com.example.backend.common.BusinessException;
+import com.example.backend.common.CacheAsideService;
 import com.example.backend.dto.SysPermissionDto;
 import com.example.backend.entity.SysPermission;
 import com.example.backend.repository.SysPermissionRepository;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,12 +20,23 @@ import java.util.Objects;
 
 /**
  * 权限业务实现。
+ *
+ * <p><b>缓存策略</b>：权限树为「读多写少」低频变更数据，走 Cache-Aside 缓存
+ * （{@link CacheAsideService}）。读路径 {@link #tree()} 命中缓存直接返回，
+ * 未命中全表加载建树后回填；写路径 {@link #save()} / {@link #delete()} 成功后
+ * 删除缓存，保证数据一致。Redis 不可用时由 CacheAsideService 透明降级为每次直查库。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class SysPermissionServiceImpl implements SysPermissionService {
 
+    /** 权限树缓存 key 前缀（与 auth:* 区分），实际 key 形如 biz:perm:tree */
+    private static final String TREE_CACHE_KEY = "biz:perm:tree";
+    /** 权限树缓存 TTL：树结构变更低频，设 30 分钟；写操作通过 delete 精确失效兜底 */
+    private static final Duration TREE_CACHE_TTL = Duration.ofMinutes(30);
+
     private final SysPermissionRepository permissionRepository;
+    private final CacheAsideService cacheAsideService;
 
     @Override
     @Transactional
@@ -58,7 +71,9 @@ public class SysPermissionServiceImpl implements SysPermissionService {
         perm.setMethod(dto.getMethod());
         perm.setSort(dto.getSort() == null ? 0 : dto.getSort());
         perm.setStatus(dto.getStatus() == null ? 0 : dto.getStatus());
-        return toVo(permissionRepository.save(perm));
+        SysPermissionVo vo = toVo(permissionRepository.save(perm));
+        cacheAsideService.invalidate(TREE_CACHE_KEY);
+        return vo;
     }
 
     @Override
@@ -73,6 +88,7 @@ public class SysPermissionServiceImpl implements SysPermissionService {
         }
         perm.setIsDeleted(1);
         permissionRepository.save(perm);
+        cacheAsideService.invalidate(TREE_CACHE_KEY);
     }
 
     @Override
@@ -84,7 +100,12 @@ public class SysPermissionServiceImpl implements SysPermissionService {
 
     @Override
     public List<SysPermissionVo> tree() {
-        // 只拉取未删除权限，由数据库过滤，避免全表加载后在内存过滤
+        // Cache-Aside：命中缓存直接返回；未命中回源建树并回填
+        return cacheAsideService.getList(TREE_CACHE_KEY, SysPermissionVo.class, this::loadTree, TREE_CACHE_TTL);
+    }
+
+    /** 回源：只拉取未删除权限，由数据库过滤，构建根节点列表 */
+    private List<SysPermissionVo> loadTree() {
         List<SysPermission> all = permissionRepository.findAllByIsDeleted(0);
         Map<Long, SysPermissionVo> voMap = new LinkedHashMap<>();
         for (SysPermission p : all) {

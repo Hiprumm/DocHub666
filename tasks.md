@@ -57,6 +57,7 @@
 - [ ] **T5-3** 前端部门空间管理/配额设置页/告警列表
 - [ ] **T5-4** NFR 与性能加固（检索≤2s、LCP≤1.5s、分片、Keyset/Cursor 分页、原子计数）
 - [x] **T5-4a** 性能演进路线图 + 业务缓存基建（PERF_ROADMAP.md + CacheAsideService，含防穿透空标记与 Redis 降级；原子计数/游标分页待 M2 文档实体落地）
+- [x] **T5-4b** Cache-Aside 落地：部门树 / 权限树「读多写少」接入缓存，save/delete 后失效；Redis 降级直查库（原子计数/游标分页待 M2 文档实体落地）
 
 ---
 
