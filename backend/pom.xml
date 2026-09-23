@@ -73,6 +73,13 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- Jackson JSON：支撑 CacheAsideService 业务数据缓存的对象序列化。
+             项目 use starter-webmvc（不含 Jackson），此处显式引入 jackson-databind，版本由 Boot BOM 统一管理 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <!-- JWT 认证（jjwt：api 编译期依赖，impl/jackson 运行期依赖） -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
